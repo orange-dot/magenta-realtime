@@ -1,0 +1,15 @@
+[package]
+name = "mrt-alsa-host"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "mrt-alsa-host"
+path = "src/main.rs"
+
+[dependencies]
+alsa = "0.9"

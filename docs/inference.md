@@ -12,6 +12,23 @@ mrt jax generate
 mrt mlx generate --bits=8
 ```
 
+For Linux CPU-only MLX smoke tests, use `mrt2_small`, the raw checkpoint path,
+and a short duration:
+
+```bash
+mrt models download mrt2_small
+mrt checkpoints download mrt2_small.safetensors
+mrt mlx generate \
+  --device cpu \
+  --no-mlxfn \
+  --model=mrt2_small \
+  --bits=8 \
+  --warmup-steps=0 \
+  --duration=0.04
+```
+
+Exported `.mlxfn` models are not supported on MLX CPU; use `--no-mlxfn`.
+
 To print MusicCoCa tokens for a prompt directly without generating audio:
 
 ```python

@@ -55,7 +55,14 @@ Issues = "https://github.com/magenta/magenta-realtime/issues"
 # to mlx (recurrentgemma can then move back to jax-only).
 [project.optional-dependencies]
 jax = ["jax", "flax", "optax", "jaxtyping", "typing_extensions"]
-mlx = ["mlx", "flax", "typing_extensions"]
+mlx = [
+    "mlx; platform_system == 'Darwin'",
+    "mlx[cpu]; platform_system == 'Linux'",
+    "flax",
+    "typing_extensions",
+]
+mlx-cuda12 = ["mlx[cuda12]", "flax", "typing_extensions"]
+mlx-cuda13 = ["mlx[cuda13]", "flax", "typing_extensions"]
 dev = ["jupyter", "ipython", "pytest", "matplotlib", "pytest-cov"]
 
 # Listener-eval bulk generation

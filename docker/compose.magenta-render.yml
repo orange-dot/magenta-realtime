@@ -1,0 +1,49 @@
+name: magenta-render-worker
+
+services:
+  magenta-jax-gpu:
+    image: magenta-rt-render:jax-gpu
+    build:
+      context: ..
+      dockerfile: docker/render-worker.Dockerfile
+      target: jax-gpu
+    profiles:
+      - jax-gpu
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:18082:8080"
+    gpus: all
+    environment:
+      MAGENTA_HOME: /magenta
+      MAGENTA_RT_RENDER_BACKEND: jax-gpu
+      MAGENTA_RT_MODEL: mrt2_small
+      MAGENTA_RT_CHECKPOINT: mrt2_small.safetensors
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      - /home/dev/Documents/Magenta:/magenta:ro
+      - /home/dev/work-base-20260421:/workspace:rw
+    working_dir: /workspace/workspace/systems/magenta-realtime
+
+  magenta-mlx-cpu:
+    image: magenta-rt-render:mlx-cpu
+    build:
+      context: ..
+      dockerfile: docker/render-worker.Dockerfile
+      target: mlx-cpu
+    profiles:
+      - mlx-cpu
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:18083:8080"
+    environment:
+      MAGENTA_HOME: /magenta
+      MAGENTA_RT_RENDER_BACKEND: mlx-cpu
+      MAGENTA_RT_MODEL: mrt2_small
+      MAGENTA_RT_CHECKPOINT: mrt2_small.safetensors
+      MAGENTA_RT_MLX_BITS: "8"
+      MAGENTA_RT_MLX_WARMUP_STEPS: "0"
+    volumes:
+      - /home/dev/Documents/Magenta:/magenta:ro
+      - /home/dev/work-base-20260421:/workspace:rw
+    working_dir: /workspace/workspace/systems/magenta-realtime

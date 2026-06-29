@@ -18,8 +18,31 @@ import logging
 import time
 
 from magenta_rt import paths
+from magenta_rt.mlx.runtime import MlxDevice
+from magenta_rt.mlx.runtime import prepare_cpu_runtime_env as _prepare_cpu_runtime_env
 
 logging.basicConfig(level=logging.INFO, force=True)
+
+
+def _resolve_generation_options(
+    device: MlxDevice,
+    use_mlxfn: bool | None,
+    warmup_steps: int | None,
+) -> tuple[bool, int]:
+    if device not in ("auto", "cpu", "gpu"):
+        raise ValueError(
+            f"Unknown MLX device '{device}'. Expected 'auto', 'cpu', or 'gpu'."
+        )
+    if device == "cpu":
+        if use_mlxfn is True:
+            raise ValueError(
+                "MLX CPU generation does not support exported .mlxfn models. "
+                "Use --no-mlxfn."
+            )
+        return False, 0 if warmup_steps is None else warmup_steps
+    return True if use_mlxfn is None else use_mlxfn, (
+        5 if warmup_steps is None else warmup_steps
+    )
 
 
 def main(
@@ -36,8 +59,15 @@ def main(
     # utils
     checkpoint: str | None = None,
     duration: float = 4.0,
-    use_mlxfn: bool = True,
+    use_mlxfn: bool | None = None,
+    device: MlxDevice = "auto",
+    warmup_steps: int | None = None,
 ):
+    use_mlxfn, warmup_steps = _resolve_generation_options(
+        device, use_mlxfn, warmup_steps
+    )
+    _prepare_cpu_runtime_env(device)
+
     if use_mlxfn:
         from magenta_rt import MagentaRT2Mlxfn
         mrt = MagentaRT2Mlxfn(
@@ -46,6 +76,8 @@ def main(
             top_k=top_k,
             cfg_musiccoca=cfg_musiccoca,
             cfg_notes=cfg_notes,
+            warmup_steps=warmup_steps,
+            device=device,
         )
     else:
         from magenta_rt import MagentaRT2Mlx
@@ -58,11 +90,15 @@ def main(
             cfg_notes=cfg_notes,
             bits=bits,
             quantize_group_size=quantize_group_size,
+            device=device,
+            warmup_steps=warmup_steps,
         )
 
     embedding = mrt.embed_style(prompt, use_mapper=True)
 
     frames = int(duration * 25)
+    if frames <= 0:
+        raise ValueError("Duration must be at least one 40 ms MLX frame.")
 
     # --- Benchmark ---
     start_time = time.time()
@@ -94,6 +130,10 @@ if __name__ == "__main__":
     parser.add_argument("--cfg-musiccoca", default=3.0, type=float)
     parser.add_argument("--cfg-notes", default=1.0, type=float)
     parser.add_argument("--duration", default=4.0, type=float, help="Duration in seconds.")
+    parser.add_argument("--device", default="auto", choices=["auto", "cpu", "gpu"],
+        help="MLX device to use. CPU uses the raw checkpoint path.")
+    parser.add_argument("--warmup-steps", default=None, type=int,
+        help="Number of warmup steps. CPU defaults to 0; other devices default to 5.")
     parser.add_argument(
         '--checkpoint',
         default=None,
@@ -103,7 +143,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--mlxfn',
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=None,
         help='Use exported .mlxfn model (default). Use --no-mlxfn for Python model.'
     )
     args = parser.parse_args()
@@ -120,4 +160,6 @@ if __name__ == "__main__":
         checkpoint=args.checkpoint,
         duration=args.duration,
         use_mlxfn=args.mlxfn,
+        device=args.device,
+        warmup_steps=args.warmup_steps,
     )

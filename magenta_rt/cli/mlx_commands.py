@@ -35,9 +35,15 @@ def mlx():
 @click.option("--cfg-musiccoca", default=3.0, type=float)
 @click.option("--cfg-notes", default=1.0, type=float)
 @click.option("--checkpoint", default=None, type=str, help="Checkpoint filename in checkpoints/ directory.")
-@click.option("--mlxfn/--no-mlxfn", default=True, help="Use exported .mlxfn model (default) or Python model.")
+@click.option("--device", default="auto", show_default=True,
+              type=click.Choice(["auto", "cpu", "gpu"]),
+              help="MLX device to use. CPU uses the raw checkpoint path.")
+@click.option("--warmup-steps", default=None, type=int,
+              help="Number of warmup steps. CPU defaults to 0; other devices default to 5.")
+@click.option("--mlxfn/--no-mlxfn", default=None,
+              help="Use exported .mlxfn model (default) or Python model.")
 def generate(prompt, model, duration, bits, temperature, top_k,
-             cfg_musiccoca, cfg_notes, checkpoint, mlxfn):
+             cfg_musiccoca, cfg_notes, checkpoint, device, warmup_steps, mlxfn):
     """Generate audio with the MLX backend."""
     bits = int(bits) if bits else None
 
@@ -53,8 +59,13 @@ def generate(prompt, model, duration, bits, temperature, top_k,
         duration=duration,
         checkpoint=checkpoint,
         use_mlxfn=mlxfn,
+        device=device,
+        warmup_steps=warmup_steps,
     )
-    run(**kwargs)
+    try:
+        run(**kwargs)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
 
 @mlx.command("export")

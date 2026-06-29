@@ -17,6 +17,7 @@
 import dataclasses
 import functools
 import logging
+import os
 import time
 
 import mlx.core as mx
@@ -28,6 +29,8 @@ from . import depthformer
 from . import spectrostream
 from . import model as model_configs
 from .load_weights import load_weights
+from .runtime import MlxDevice
+from .runtime import prepare_cpu_runtime_env
 from .. import audio
 from .. import musiccoca
 from .. import paths
@@ -36,6 +39,25 @@ from .. import paths
 logger = logging.getLogger(__name__)
 
 NUM_RESERVED_TOKENS = 6
+
+
+def configure_mlx_device(device: MlxDevice = 'auto') -> MlxDevice:
+  """Configure MLX's default device for this process."""
+  if device not in ('auto', 'cpu', 'gpu'):
+    raise ValueError(
+        f"Unknown MLX device '{device}'. Expected 'auto', 'cpu', or 'gpu'."
+    )
+  if device == 'cpu':
+    prepare_cpu_runtime_env(device)
+    if (
+        os.environ.get('MAGENTA_RT_MLX_CPU_COMPILE') != '1'
+        and hasattr(mx, 'disable_compile')
+    ):
+      mx.disable_compile()
+    mx.set_default_device(mx.cpu)
+  elif device == 'gpu':
+    mx.set_default_device(mx.gpu)
+  return device
 
 
 def discretize_cfg(value: float, step: float, max_bin: int) -> int:
@@ -187,6 +209,8 @@ class MagentaRT2System:
       cfg_drums: float = 1.0,
       bits: int | None = 8,
       quantize_group_size: int | None = None,
+      device: MlxDevice = 'auto',
+      warmup_steps: int = 5,
   ):
     """Initialise the system: build model, load weights, optionally quantize.
 
@@ -203,7 +227,11 @@ class MagentaRT2System:
       bits: Quantization bit width (4 or 8). None means no quantization.
       quantize_group_size: Group size for quantization. If None, defaults to
           32 for 4-bit and 64 for 8-bit.
+      device: MLX default device: "auto", "cpu", or "gpu".
+      warmup_steps: Number of warmup inference steps. Use 0 to skip warmup.
     """
+
+    configure_mlx_device(device)
 
     self._model = model_configs.get_model_class(size)()
     self._size = size
@@ -268,7 +296,8 @@ class MagentaRT2System:
     )
 
     # --- Warm up ---
-    self._warmup()
+    if warmup_steps > 0:
+      self._warmup(warmup_steps)
 
   def _warmup(self, steps: int = 5):
     """Run a few dummy streaming steps to warm up MLX kernel caches."""
@@ -514,6 +543,7 @@ class MagentaRT2SystemMlxfn:
       cfg_notes: float = 1.0,
       cfg_drums: float = 1.0,
       warmup_steps: int = 5,
+      device: MlxDevice = 'auto',
   ):
     """Initialise from an exported .mlxfn model directory.
 
@@ -527,7 +557,16 @@ class MagentaRT2SystemMlxfn:
       cfg_notes: Classifier-free guidance scale for notes.
       cfg_drums: Classifier-free guidance scale for drums.
       warmup_steps: Number of warmup inference steps.
+      device: MLX default device: "auto" or "gpu". CPU is not supported for
+          exported .mlxfn models.
     """
+    if device == 'cpu':
+      raise ValueError(
+          'MLX CPU generation does not support exported .mlxfn models. '
+          'Use the raw checkpoint path with --no-mlxfn.'
+      )
+    configure_mlx_device(device)
+
     model_name = size or paths.DEFAULT_MODEL_NAME
     model_path = paths.models_dir() / model_name
 
@@ -570,7 +609,8 @@ class MagentaRT2SystemMlxfn:
     self._sample_rate = 48_000
 
     # --- Warm up ---
-    self._warmup(warmup_steps)
+    if warmup_steps > 0:
+      self._warmup(warmup_steps)
 
   def _warmup(self, steps: int = 5):
     """Run a few dummy steps to warm up MLX kernel caches."""

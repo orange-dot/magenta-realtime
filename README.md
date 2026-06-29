@@ -51,7 +51,7 @@ The table below shows which devices support **real-time streaming** (generating 
 | M3 Air | ✅ | ❌ |
 | M1 Air | ✅ | ❌ |
 
-> **Note:** Both models can also run **offline (non-real-time) inference** on any Apple Silicon Mac or NVIDIA GPU via the Python library. See more details on [`docs/models.md`](docs/models.md).
+> **Note:** Both models can also run **offline (non-real-time) inference** on any Apple Silicon Mac or NVIDIA GPU via the Python library. Linux CPU MLX smoke runs are supported for `mrt2_small` through the raw checkpoint path. See more details on [`docs/models.md`](docs/models.md).
 
 ## Quickstart on Apple Silicon
 
@@ -81,6 +81,27 @@ For local development, clone the repo instead of installing from PyPI:
 git clone --recurse-submodules https://github.com/magenta/magenta-realtime.git
 cd magenta-realtime
 uv pip install -e ".[mlx]"
+```
+
+For a Linux CPU-only MLX smoke test, use a separate environment from any CUDA
+MLX install and run the raw checkpoint path:
+
+```bash
+uv venv --python 3.12 .venv-mlx-cpu
+uv pip install --python .venv-mlx-cpu/bin/python -e ".[mlx]"
+
+.venv-mlx-cpu/bin/mrt models init
+.venv-mlx-cpu/bin/mrt models download mrt2_small
+.venv-mlx-cpu/bin/mrt checkpoints download mrt2_small.safetensors
+
+.venv-mlx-cpu/bin/mrt mlx generate \
+    --device cpu \
+    --no-mlxfn \
+    --model=mrt2_small \
+    --bits=8 \
+    --warmup-steps=0 \
+    --duration=0.04 \
+    --prompt "disco funk"
 ```
 
 ### C++ App Development

@@ -12,32 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Load JAX safetensors weights into the MLX MagentaRT2Sampler system."""
+"""Load JAX-named safetensors weights into the MLX MagentaRT2Sampler system."""
 
 import mlx.core as mx
 import mlx.nn as nn
 import numpy as np
-import safetensors.flax as safetensors_flax
-import flax.traverse_util as flaxtu
 
 from sequence_layers.mlx import basic_types as bt
 from sequence_layers.mlx import export
 
+from .checkpoint_io import load_jax_params
 from .spectrostream.load_weights import load_spectrostream_weights
 
 
 def _load_jax_params(path):
-  """Load JAX checkpoint as a nested dict of numpy arrays."""
-  flat_weights = safetensors_flax.load_file(path)
-  nested_dict = {tuple(k.split('/')): v for k, v in flat_weights.items()}
-  return flaxtu.unflatten_dict(nested_dict)
+  """Load a checkpoint as a nested dict of numpy arrays."""
+  return load_jax_params(path)
 
 
 _loaded_param_count = [0]
 
 
 def _to_mx(arr):
-  """Convert numpy/jax array to mx.array."""
+  """Convert a numpy array to mx.array."""
   result = mx.array(np.array(arr))
   _loaded_param_count[0] += result.size
   return result

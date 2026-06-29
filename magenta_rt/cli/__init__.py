@@ -25,3 +25,5 @@ def main():
 from magenta_rt.cli import mlx_commands  # noqa: E402, F401
 from magenta_rt.cli import jax_commands  # noqa: E402, F401
 from magenta_rt.cli import models_commands  # noqa: E402, F401
+from magenta_rt.cli import pc4ms_commands  # noqa: E402, F401
+from magenta_rt.cli import midi_commands  # noqa: E402, F401

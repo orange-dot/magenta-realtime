@@ -49,6 +49,15 @@ uv pip install "magenta-rt" "jax[cuda13]"
 ```
 :::
 
+:::{tab-item} Linux (MLX CPU)
+Use this for offline `mrt2_small` smoke tests, not real-time streaming. Keep it
+in a separate environment from CUDA MLX installs:
+
+```bash
+uv pip install "magenta-rt[mlx]"
+```
+:::
+
 ::::
 
 ## 3. Download models
@@ -68,7 +77,8 @@ language-model checkpoints, and how to fetch raw safetensors for research.
 ## 4. Generate music
 
 Confirm everything works by generating a short clip. Use `mrt mlx` on Apple
-Silicon and `mrt jax` elsewhere:
+Silicon, `mrt jax` for Linux accelerators, or the raw MLX checkpoint path for a
+Linux CPU smoke test:
 
 ::::{tab-set}
 
@@ -85,6 +95,22 @@ mrt jax generate --prompt "disco funk" --duration 4.0 --model=mrt2_base
 ```
 :::
 
+:::{tab-item} Linux (MLX CPU)
+```bash
+mrt models download mrt2_small
+mrt checkpoints download mrt2_small.safetensors
+
+mrt mlx generate \
+  --device cpu \
+  --no-mlxfn \
+  --model=mrt2_small \
+  --bits=8 \
+  --warmup-steps=0 \
+  --duration=0.04 \
+  --prompt "disco funk"
+```
+:::
+
 ::::
 
 See [Inference](inference.md) for more on prompting, tokens, and bulk generation.
@@ -98,8 +124,9 @@ instead of from PyPI:
 git clone --recurse-submodules https://github.com/magenta/magenta-realtime.git
 cd magenta-realtime
 
-uv pip install -e ".[mlx]"           # macOS
-uv pip install -e "." "jax[cuda13]"  # Linux with CUDA
+uv pip install -e ".[mlx]"              # macOS or Linux MLX CPU
+uv pip install -e ".[mlx-cuda13]"       # Linux MLX with CUDA 13
+uv pip install -e "." "jax[cuda13]"     # Linux JAX with CUDA 13
 ```
 
 ## C++ app development

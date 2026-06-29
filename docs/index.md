@@ -51,6 +51,7 @@ models
 inference
 exporting
 benchmark
+jax_live_producer
 testing
 ```
 
